@@ -98,7 +98,7 @@ A `StatefulActionNode` that:
 
 # Video Demonstration
 
-[![Watch the demo](https://youtu.be/-IHkGq6dSyA)
+[![Watch the demo](https://img.youtube.com/vi/-IHkGq6dSyA/hqdefault.jpg)](https://www.youtube.com/watch?v=-IHkGq6dSyA)
 
 ## Web dashboard
 `web/dashboard.html` is a standalone browser page that lets you trigger Nav2
