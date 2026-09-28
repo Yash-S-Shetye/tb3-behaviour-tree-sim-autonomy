@@ -101,7 +101,7 @@ A `StatefulActionNode` that:
 [![Watch the demo](https://img.youtube.com/vi/-IHkGq6dSyA/hqdefault.jpg)](https://www.youtube.com/watch?v=-IHkGq6dSyA)
 
 ## Web dashboard
-`web/dashboard.html` is a standalone browser page that lets you trigger Nav2
+`web_dashboard.html` is a standalone browser page that lets you trigger Nav2
 goals to the predefined locations without running `autonomy_node` or the
 behavior tree — useful for ad-hoc testing and demos. It talks to ROS2
 directly over a WebSocket using the
@@ -115,7 +115,7 @@ with no external JS library dependency.
    sudo apt install ros-humble-rosbridge-suite
    ros2 launch rosbridge_server rosbridge_websocket_launch.xml
 ```
-2. Open `web/dashboard.html` in a browser.
+2. Open `web_dashboard.html` in a browser.
 3. Set the WebSocket URL (default `ws://localhost:9090`; use the robot's LAN
    IP if connecting remotely, e.g. `ws://192.168.x.x:9090`).
 4. Click **Connect**, then click a location button to send that goal. Live
