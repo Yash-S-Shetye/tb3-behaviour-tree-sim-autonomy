@@ -96,34 +96,62 @@ A `StatefulActionNode` that:
    detection).
 4. Returns `SUCCESS`/`FAILURE` based on the action result.
 
-Web dashboard
-
-web/dashboard.html is a standalone browser page that lets you trigger Nav2 goals to the predefined locations without running autonomy_node or the behavior tree — useful for ad-hoc testing and demos. It talks to ROS2 directly over a WebSocket using the rosbridge protocol, with no external JS library dependency.
-
-Setup
-Install and launch rosbridge on the machine running Nav2:
-bash
+## Web dashboard
+`web/dashboard.html` is a standalone browser page that lets you trigger Nav2
+goals to the predefined locations without running `autonomy_node` or the
+behavior tree — useful for ad-hoc testing and demos. It talks to ROS2
+directly over a WebSocket using the
+[rosbridge protocol](https://github.com/RobotWebTools/rosbridge_suite/blob/ros2/ROSBRIDGE_PROTOCOL.md),
+with no external JS library dependency.
+ 
+### Setup
+ 
+1. Install and launch rosbridge on the machine running Nav2:
+```bash
    sudo apt install ros-humble-rosbridge-suite
    ros2 launch rosbridge_server rosbridge_websocket_launch.xml
-Open web/dashboard.html in a browser.
-Set the WebSocket URL (default ws://localhost:9090; use the robot's LAN IP if connecting remotely, e.g. ws://192.168.x.x:9090).
-Click Connect, then click a location button to send that goal. Live distance_remaining feedback streams into the log panel, and Cancel Current Goal aborts the in-flight goal.
-⚠️ Security warning
-
-rosbridge_server has no built-in authentication. Anyone who can reach its WebSocket port can fully command the robot (navigation goals, and potentially any other topic/service/action exposed on the graph). Only run this on a trusted local network. Do not expose port 9090 to the public internet without putting an authenticating reverse proxy in front of it.
-
-⚠️ roslibjs ROSLIB.Action does not reliably work for ROS2 actions
-
-If you're extending this dashboard or writing your own: avoid ROSLIB.ActionClient/ROSLIB.Goal (roslibjs's original API) — these implement the ROS1 actionlib wire format (separate /goal, /feedback, /result topics with message types like NavigateToPoseGoal), which does not exist in ROS2 and will fail with errors like:
-
+```
+2. Open `web/dashboard.html` in a browser.
+3. Set the WebSocket URL (default `ws://localhost:9090`; use the robot's LAN
+   IP if connecting remotely, e.g. `ws://192.168.x.x:9090`).
+4. Click **Connect**, then click a location button to send that goal. Live
+   `distance_remaining` feedback streams into the log panel, and **Cancel
+   Current Goal** aborts the in-flight goal.
+### ⚠️ Security warning
+ 
+`rosbridge_server` has **no built-in authentication**. Anyone who can reach
+its WebSocket port can fully command the robot (navigation goals, and
+potentially any other topic/service/action exposed on the graph). Only run
+this on a trusted local network. **Do not expose port 9090 to the public
+internet** without putting an authenticating reverse proxy in front of it.
+ 
+### ⚠️ roslibjs `ROSLIB.Action` does not reliably work for ROS2 actions
+ 
+If you're extending this dashboard or writing your own: **avoid
+`ROSLIB.ActionClient`/`ROSLIB.Goal`** (roslibjs's original API) — these
+implement the ROS1 actionlib wire format (separate `/goal`, `/feedback`,
+`/result` topics with message types like `NavigateToPoseGoal`), which does
+not exist in ROS2 and will fail with errors like:
+ 
+```
 Unable to import msg class NavigateToPoseGoal from package nav2_msgs
-
-roslibjs also added a newer ROSLIB.Action class intended for ROS2, but as of testing (Sept 2026) the npm-published build resolved by common CDNs (cdnjs, jsdelivr @latest) does not include it — new ROSLIB.Action(...) throws TypeError: ROSLIB.Action is not a constructor even though the class exists in the library's source. Since this dashboard doesn't need any other roslibjs feature, it works around the gap by speaking the rosbridge v2.1.0 protocol directly over a plain WebSocket:
-
-Send a goal: { op: "send_action_goal", id, action, action_type, args, feedback: true }
-Cancel a goal: { op: "cancel_action_goal", id, action }
-Listen for action_feedback / action_result messages matching your id
-
-No advertise_action call is needed when calling an existing action server (like Nav2's) — that op is only for a client acting as its own action server, the same relationship call_service has with advertise_service.
-
-If a future roslibjs release fixes this, ROSLIB.Action would be a cleaner approach — worth re-testing periodically.
+```
+ 
+roslibjs also added a newer `ROSLIB.Action` class intended for ROS2, but as
+of testing (Sept 2026) the npm-published build resolved by common CDNs
+(`cdnjs`, `jsdelivr @latest`) does **not** include it — `new ROSLIB.Action(...)`
+throws `TypeError: ROSLIB.Action is not a constructor` even though the
+class exists in the library's source. Since this dashboard doesn't need any
+other roslibjs feature, it works around the gap by speaking the rosbridge
+v2.1.0 protocol directly over a plain `WebSocket`:
+ 
+- Send a goal: `{ op: "send_action_goal", id, action, action_type, args, feedback: true }`
+- Cancel a goal: `{ op: "cancel_action_goal", id, action }`
+- Listen for `action_feedback` / `action_result` messages matching your `id`
+No `advertise_action` call is needed when calling an *existing* action
+server (like Nav2's) — that op is only for a client acting as its own
+action server, the same relationship `call_service` has with
+`advertise_service`.
+ 
+If a future roslibjs release fixes this, `ROSLIB.Action` would be a cleaner
+approach — worth re-testing periodically.
