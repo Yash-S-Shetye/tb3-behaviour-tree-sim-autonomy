@@ -96,6 +96,10 @@ A `StatefulActionNode` that:
    detection).
 4. Returns `SUCCESS`/`FAILURE` based on the action result.
 
+# Video Demonstration
+
+[![Watch the demo](https://youtu.be/-IHkGq6dSyA)
+
 ## Web dashboard
 `web/dashboard.html` is a standalone browser page that lets you trigger Nav2
 goals to the predefined locations without running `autonomy_node` or the
