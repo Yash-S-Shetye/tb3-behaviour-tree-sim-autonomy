@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>TB3 Location Dashboard</title>
+<style>
+  :root {
+    --bg: #0f1115; --panel: #1a1d24; --text: #e8e8ea; --muted: #9099a8;
+    --accent: #4f8cff; --ok: #35c46a; --err: #ff5c5c;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg: #f5f6f8; --panel: #ffffff; --text: #1a1d24; --muted: #666f80;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    height: 100%; margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, system-ui, sans-serif;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .wrap { max-width: 480px; margin: 0 auto; padding: 24px 16px; }
+  h1 { font-size: 1.2rem; margin: 0 0 4px; }
+  .status { font-size: 0.85rem; margin-bottom: 20px; }
+  .status.connected { color: var(--ok); }
+  .status.disconnected { color: var(--err); }
+  .row { display: flex; gap: 8px; margin-bottom: 20px; }
+  input {
+    flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--muted);
+    background: var(--panel); color: var(--text); font-size: 0.9rem;
+  }
+  button {
+    padding: 10px 14px; border-radius: 8px; border: none; cursor: pointer;
+    font-size: 0.9rem; background: var(--accent); color: white;
+  }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+  .loc-btn {
+    padding: 18px 10px; background: var(--panel); color: var(--text);
+    border: 1px solid var(--muted); border-radius: 10px; font-size: 1rem;
+  }
+  .loc-btn:active { background: var(--accent); color: white; }
+  .cancel-btn { width: 100%; background: var(--err); margin-bottom: 20px; }
+  .log {
+    background: var(--panel); border-radius: 8px; padding: 12px;
+    font-family: monospace; font-size: 0.78rem; max-height: 200px;
+    overflow-y: auto; white-space: pre-wrap; word-break: break-word;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>TurtleBot3 Location Dashboard</h1>
+  <div id="status" class="status disconnected">Disconnected</div>
+
+  <div class="row">
+    <input id="wsUrl" value="ws://localhost:9090" />
+    <button id="connectBtn">Connect</button>
+  </div>
+
+  <div class="grid" id="locButtons"></div>
+  <button class="cancel-btn" id="cancelBtn" disabled>Cancel Current Goal</button>
+
+  <div class="log" id="log"></div>
+</div>
+
+<script>
+  // Keep these in sync with config/sim_house_locations.yaml: [x, y, theta]
+  const LOCATIONS = {
+    location1: [-1.0, -0.5, -2.356],
+    location2: [-1.0,  2.0,  0.785],
+    location3: [ 0.0,  0.5,  1.571],
+    location4: [ 0.0, -2.0, -1.571],
+  };
+
+  const ACTION_NAME = '/navigate_to_pose';
+  const ACTION_TYPE = 'nav2_msgs/action/NavigateToPose';
+
+  let socket = null;
+  let currentGoalId = null;
+
+  const statusEl = document.getElementById('status');
+  const logEl = document.getElementById('log');
+  const cancelBtn = document.getElementById('cancelBtn');
+  const locButtonsEl = document.getElementById('locButtons');
+
+  function log(msg) {
+    const t = new Date().toLocaleTimeString();
+    logEl.textContent = `[${t}] ${msg}\n` + logEl.textContent;
+  }
+
+  function yawToQuaternion(yaw) {
+    return { x: 0, y: 0, z: Math.sin(yaw / 2), w: Math.cos(yaw / 2) };
+  }
+
+  function setConnected(isConnected) {
+    statusEl.textContent = isConnected ? 'Connected' : 'Disconnected';
+    statusEl.className = 'status ' + (isConnected ? 'connected' : 'disconnected');
+    document.querySelectorAll('.loc-btn').forEach(b => b.disabled = !isConnected);
+  }
+
+  function connect() {
+    const url = document.getElementById('wsUrl').value.trim();
+    socket = new WebSocket(url);
+
+    socket.onopen = () => { setConnected(true); log('Connected to rosbridge at ' + url); };
+    socket.onerror = (err) => { setConnected(false); log('Connection error (see browser console)'); console.error(err); };
+    socket.onclose = () => { setConnected(false); log('Connection closed'); };
+
+    socket.onmessage = (event) => {
+      let msg;
+      try { msg = JSON.parse(event.data); } catch (e) { return; }
+
+      if (msg.op === 'action_feedback' && msg.id === currentGoalId) {
+        const dist = msg.values && msg.values.distance_remaining !== undefined
+          ? msg.values.distance_remaining.toFixed(2) : '?';
+        log(`Distance remaining: ${dist} m`);
+      } else if (msg.op === 'action_result' && msg.id === currentGoalId) {
+        log(`Goal finished — status: ${msg.status}, result: ${msg.result}`);
+        cancelBtn.disabled = true;
+        currentGoalId = null;
+      }
+    };
+  }
+
+  function sendGoal(name, pose) {
+    if (!socket || socket.readyState !== WebSocket.OPEN) { log('Not connected yet'); return; }
+
+    const [x, y, theta] = pose;
+    const goalId = 'goal_' + Date.now();
+
+    const goalMsg = {
+      op: 'send_action_goal',
+      id: goalId,
+      action: ACTION_NAME,
+      action_type: ACTION_TYPE,
+      args: {
+        pose: {
+          header: { frame_id: 'map' },
+          pose: {
+            position: { x, y, z: 0 },
+            orientation: yawToQuaternion(theta)
+          }
+        }
+      },
+      feedback: true
+    };
+
+    socket.send(JSON.stringify(goalMsg));
+    currentGoalId = goalId;
+    cancelBtn.disabled = false;
+    log(`Sent goal: ${name} (x=${x}, y=${y}, theta=${theta})`);
+  }
+
+  Object.entries(LOCATIONS).forEach(([name, pose]) => {
+    const btn = document.createElement('button');
+    btn.className = 'loc-btn';
+    btn.textContent = name;
+    btn.disabled = true;
+    btn.onclick = () => sendGoal(name, pose);
+    locButtonsEl.appendChild(btn);
+  });
+
+  cancelBtn.onclick = () => {
+    if (currentGoalId && socket) {
+      socket.send(JSON.stringify({ op: 'cancel_action_goal', id: currentGoalId, action: ACTION_NAME }));
+      log('Cancel requested');
+      cancelBtn.disabled = true;
+    }
+  };
+
+  document.getElementById('connectBtn').onclick = connect;
+</script>
+</body>
+</html>
