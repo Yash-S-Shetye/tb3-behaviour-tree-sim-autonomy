@@ -159,3 +159,5 @@ action server, the same relationship `call_service` has with
  
 If a future roslibjs release fixes this, `ROSLIB.Action` would be a cleaner
 approach — worth re-testing periodically.
+
+[![Watch the demo](https://img.youtube.com/vi/VhdxiyQQRhU/hqdefault.jpg)](https://www.youtube.com/watch?v=VhdxiyQQRhU)
