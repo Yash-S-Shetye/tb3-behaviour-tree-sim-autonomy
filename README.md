@@ -96,7 +96,7 @@ A `StatefulActionNode` that:
    detection).
 4. Returns `SUCCESS`/`FAILURE` based on the action result.
 
-# Video Demonstration
+# Video Demonstration for autonomy node
 
 [![Watch the demo](https://img.youtube.com/vi/-IHkGq6dSyA/hqdefault.jpg)](https://www.youtube.com/watch?v=-IHkGq6dSyA)
 
@@ -160,4 +160,5 @@ action server, the same relationship `call_service` has with
 If a future roslibjs release fixes this, `ROSLIB.Action` would be a cleaner
 approach — worth re-testing periodically.
 
+# Video Demonstration for web dashboard
 [![Watch the demo](https://img.youtube.com/vi/VhdxiyQQRhU/hqdefault.jpg)](https://www.youtube.com/watch?v=VhdxiyQQRhU)
